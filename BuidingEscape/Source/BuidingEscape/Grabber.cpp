@@ -55,31 +55,58 @@ void UGrabber::SetupInputComponent()
 	}
 }
 
+
+/// Called every frame
+void UGrabber::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	/// Get player viewpoint this tick
+	FVector PlayerViewPointLocation;
+	FRotator PlayerViewPointRoation;
+	GetWorld()->GetFirstPlayerController()->GetPlayerViewPoint(
+		OUT PlayerViewPointLocation,
+		OUT PlayerViewPointRoation
+	);
+
+	FVector LineTraceEnd = PlayerViewPointLocation + PlayerViewPointRoation.Vector() * Reach;
+
+
+	// if the physics handle is attached 
+	if (PhysicsHandle->GrabbedComponent)
+
+	{
+		//Move the object that we're holding
+		PhysicsHandle->SetTargetLocation(LineTraceEnd);
+	}
+
+}
+
+
 void UGrabber::Grab() {
 	UE_LOG(LogTemp, Warning, TEXT("Grab pressed"))
 
 	/// LINE TRACE and see if we reach any actors with physics body collision channel set
-	GetFirstPhysicsBodyInReach();
-
+	auto HitResult = GetFirstPhysicsBodyInReach();
+	auto ComponentToGrab = HitResult.GetComponent();
+	auto ActorHit = HitResult.GetActor();
+	
     //If we hit something then attach a physics handle
-	//TODO attach physics handle
+	if (ActorHit)
+	{
+		//attach physics handle
+		PhysicsHandle->GrabComponent(
+			ComponentToGrab,
+			NAME_None,
+			ComponentToGrab->GetOwner()->GetActorLocation(),
+			true // allow Rotation
+		);
+	}
 }
 void UGrabber::Release() 
 {
 	UE_LOG(LogTemp, Warning, TEXT("Grab Released"))
-		// TODO release physics handle
-}
-
-
-/// Called every frame
-void UGrabber::TickComponent( float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction )
-{
-	Super::TickComponent( DeltaTime, TickType, ThisTickFunction );
-
-	// if the physics handle is attached 
-		//Move the object that we're holding
-
-	
+		PhysicsHandle->ReleaseComponent();
 }
 
 
@@ -116,5 +143,5 @@ const FHitResult UGrabber::GetFirstPhysicsBodyInReach()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Line Trace Hit: %s"), *(ActorHit->GetName()))
 	}
-	return FHitResult();
+	return Hit;
 }
